@@ -3,6 +3,7 @@ import torchvision.transforms as transforms
 import os
 import cv2
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class EAST(nn.Module):
@@ -96,12 +97,15 @@ class EAST(nn.Module):
 
         # Feature-merging branch
         h4 = self.Feature_merging_4(f4)
+        h4 = F.interpolate(h4, size=f3.shape[2:], mode='bilinear', align_corners=True)
         h4 = torch.cat((h4, f4), dim=1)
 
         h3 = self.Feature_merging_3(h4)
+        h3 = F.interpolate(h3, size=f2.shape[2:], mode='bilinear', align_corners=True)
         h3 = torch.cat((h3, f3), dim=1)
 
         h2 = self.Feature_merging_2(h3)
+        h2 = F.interpolate(h2, size=f1.shape[2:], mode='bilinear', align_corners=True)
         h2 = torch.cat((h2, f2), dim=1)
         
         x = self.Feature_extractor_end(h2)
