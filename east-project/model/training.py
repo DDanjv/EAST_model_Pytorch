@@ -3,11 +3,9 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 
 def split_Dataset_and_tensorload(training_imgs, 
-                training_Labels, 
                 training_coords,
                 val_split=0.2):
        dataset = TensorDataset(training_imgs, 
-                               training_Labels, 
                                training_coords)
        training_size = int((1 - val_split) * len(dataset))
        val_size = len(dataset) - training_size
@@ -47,21 +45,21 @@ def loop_helper(model, loadedata, device, optimizer=None, criterion=None, train=
     start = time.time()
     running_loss = 0.0
 
-    for imgs, labels, coords in loadedata:
+    for imgs, coords in loadedata:
         imgs = imgs.to(device)
-        labels = labels.to(device)
         coords = coords.to(device)
         if train:
             optimizer.zero_grad()
         outputs = model(imgs)
-        batch_loss = criterion(outputs, labels)
+        score_loss, geo_loss = criterion(outputs, coords)
         if train:
-            batch_loss.backward()
+            score_loss.backward()
+            geo_loss.backward()
             optimizer.step()
-        running_loss += batch_loss.item()
+        running_loss += score_loss.item()
         _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
+        total += coords.size(0)
+        correct += (predicted == coords).sum().item()
 
     avg_loss = running_loss / len(loadedata)
     accuracy = 100 * correct / total
