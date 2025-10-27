@@ -2,18 +2,19 @@ import time
 import torch
 from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 
-def split_Dataset_and_tensorload(training_imgs, 
-                training_coords,
-                val_split=0.2):
-       dataset = TensorDataset(training_imgs, 
-                               training_coords)
-       training_size = int((1 - val_split) * len(dataset))
-       val_size = len(dataset) - training_size
-       training_dataset, val_dataset = torch.utils.data.random_split(dataset, [training_size, val_size])
-       return training_dataset, val_dataset
+def split_Dataset_and_tensorload(training_imgs, training_coords,val_split=0.2):
+        training_imgs = [torch.tensor(x) for x in training_imgs]
+        training_coords = [torch.tensor(x) for x in training_coords]
+        training_imgs = torch.stack(training_imgs)
+        training_coords = torch.stack(training_coords)
+        dataset = TensorDataset(training_imgs, training_coords)
+        training_size = int((1 - val_split) * len(dataset))
+        val_size = len(dataset) - training_size
+        training_dataset, val_dataset = torch.utils.data.random_split(dataset, [training_size, val_size])
+        return training_dataset, val_dataset
 
 def put_in_dataloader(dataset, batch_size=32):
-    dataset_loaded = DataLoader(dataset, batch_size = batch_size)
+    dataset_loaded = DataLoader(dataset, batch_size=batch_size)
     return dataset_loaded
 
 def loop_helper(model, loadedata, device, optimizer=None, criterion1=None, criterion2=None, train=True):
@@ -47,8 +48,7 @@ def loop_helper(model, loadedata, device, optimizer=None, criterion1=None, crite
     return avg_loss, accuracy
     return loss / total, correct / total
 
-def train_model(model,training_imgs, 
-                training_Labels, 
+def train_model(model,training_imgs,
                 training_coords, 
                 batch_size=32, 
                 cycles=10):

@@ -82,8 +82,7 @@ optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
 #to train model 
 
-train_model(model, training_imgs, 
-                training_Labels, 
+train_model(model, training_imgs,
                 training_coords, 
                 batch_size=32, 
                 cycles=10)
