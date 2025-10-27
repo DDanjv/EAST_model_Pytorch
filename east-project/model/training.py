@@ -35,7 +35,7 @@ def put_in_dataloader_with_bias(dataset, num_classes, batch_size=32):
     dataset_loaded = DataLoader(dataset, batch_size = batch_size, sampler = sampler)
     return dataset_loaded
 
-def loop_helper(model, loadedata, device, optimizer=None, criterion=None, train=True):
+def loop_helper(model, loadedata, device, optimizer=None, criterion1=None, criterion2=None, train=True):
     if train:
         model.train()
     else:
@@ -50,14 +50,14 @@ def loop_helper(model, loadedata, device, optimizer=None, criterion=None, train=
         coords = coords.to(device)
         if train:
             optimizer.zero_grad()
-        outputs = model(imgs)
-        score_loss, geo_loss = criterion(outputs, coords)
+        score_outputs, geo_outputs = model(imgs)
+        score_loss, geo_loss = criterion1(score_outputs, coords), criterion2(geo_outputs, coords)
         if train:
             score_loss.backward()
             geo_loss.backward()
             optimizer.step()
-        running_loss += score_loss.item()
-        _, predicted = torch.max(outputs.data, 1)
+        running_loss += score_loss.item() + geo_loss.item()
+        _, predicted = torch.max(score_outputs.data, 1)
         total += coords.size(0)
         correct += (predicted == coords).sum().item()
 
@@ -77,8 +77,7 @@ def train_model(model,training_imgs,
     model.to(device)
 
     # split data into train and validation
-    training_dataset, val_dataset = split_Dataset_and_tensorload(training_imgs, 
-                                                    training_Labels, 
+    training_dataset, val_dataset = split_Dataset_and_tensorload(training_imgs,
                                                     training_coords,
                                                     val_split=0.2)
     
@@ -98,12 +97,14 @@ def train_model(model,training_imgs,
                                             training_dataset_loaded, 
                                             device, 
                                             optimizer=torch.optim.Adam(model.parameters(), lr=0.001), 
-                                            criterion=torch.nn.CrossEntropyLoss(), 
+                                            criterion1=torch.nn.CrossEntropyLoss(),
+                                            criterion2=torch.nn.CrossEntropyLoss(),
                                             train=True)
         val_loss, val_acc = loop_helper(model,
                                             val_dataset_loaded, 
                                             device, 
-                                            criterion=torch.nn.CrossEntropyLoss(), 
+                                            criterion1=torch.nn.CrossEntropyLoss(),
+                                            criterion2=torch.nn.CrossEntropyLoss(),
                                             train=False)
         print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%")
         print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%")
