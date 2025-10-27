@@ -16,25 +16,6 @@ def put_in_dataloader(dataset, batch_size=32):
     dataset_loaded = DataLoader(dataset, batch_size = batch_size)
     return dataset_loaded
 
-def put_in_dataloader_with_bias(dataset, num_classes, batch_size=32):
-
-    #pulls labels
-    labels = torch.tensor([label for _, label, _ in dataset])
-
-    #creates weights for each class
-    class_counts = torch.bincount(labels, minlength = num_classes)
-    class_weights = 1. / class_counts.float()
-    sample_weights = class_weights[labels]
-
-    #creates sampler and dataloader
-    sampler = WeightedRandomSampler(
-        weights=sample_weights,
-        num_samples=len(sample_weights),
-        replacement=True
-    )
-    dataset_loaded = DataLoader(dataset, batch_size = batch_size, sampler = sampler)
-    return dataset_loaded
-
 def loop_helper(model, loadedata, device, optimizer=None, criterion1=None, criterion2=None, train=True):
     if train:
         model.train()
