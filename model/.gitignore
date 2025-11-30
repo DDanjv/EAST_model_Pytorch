@@ -4,6 +4,8 @@ __pycache__/
 
 # Ignore environment variables
 .env
+venv
+venveast
 
 # Ignore OS junk
 .DS_Store
