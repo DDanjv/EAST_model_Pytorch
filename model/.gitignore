@@ -5,7 +5,7 @@ __pycache__/
 # Ignore environment variables
 .env
 venv
-venveast
+venv-east
 
 # Ignore OS junk
 .DS_Store
@@ -15,6 +15,7 @@ Thumbs.db
 venv/
 build/
 dist/
+dataset/
 
 # Ignore logs
 *.log

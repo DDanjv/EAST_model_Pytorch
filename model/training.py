@@ -66,11 +66,7 @@ def loop_helper(model, loadedata, device, optimizer=None, criterion=None, train=
     return avg_loss, accuracy
     return loss / total, correct / total
 
-def train_model(model,training_imgs, 
-                training_Labels, 
-                training_coords, 
-                batch_size=32, 
-                cycles=10):
+def train_model(model,training_imgs, training_Labels, training_coords, batch_size=32, cycles=10):
     # load model 
     model.train()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
