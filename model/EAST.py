@@ -74,7 +74,7 @@ class EAST(nn.Module):
             nn.Conv2d(4, 1, kernel_size=1, stride=1, padding=0)
         )
         self.output_score_quad_geometry = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=1, stride=1, padding=0)
+            nn.Conv2d(1, w, kernel_size=1, stride=1, padding=0)
         )
 
     def Initialize_weights(self):

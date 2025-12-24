@@ -74,10 +74,3 @@ def loop_helper(model, dataset_loaded, device, optimizer, criterion , train = Tr
     avg_loss = running_loss / len(dataset_loaded)
     accuracy = 100 * correct / total
     return avg_loss, accuracy
-        
-        
-
-
-
-
-    return 
