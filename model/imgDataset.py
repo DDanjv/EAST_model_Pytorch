@@ -46,7 +46,11 @@ class imgDataset(Dataset):
                     pts = np.array(row).reshape((-1, 1, 2)).astype(np.int32)
                     color = (0, 255, 0)  
                     cv2.fillPoly(canvas, [pts], color)
-                coordsMap = torch.from_numpy(canvas)
+                transform = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.ToTensor(),
+                ])
+                coordsMap = transform(canvas)
 
 
         return [img , labelsForImg, coordsMap]
