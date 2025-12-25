@@ -51,7 +51,7 @@ def loop_helper(model, dataset_loaded, device, optimizer, criterion , train = Tr
     running_loss = 0.0
 
     #cycles through the photos and coords in each batch
-    for imgs, coords in dataset_loaded:
+    for imgs, _ , coords in dataset_loaded:
         imgs = imgs.to(device)
         coords = coords.to(device)
         #if training 

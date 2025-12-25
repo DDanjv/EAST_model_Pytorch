@@ -53,5 +53,5 @@ class imgDataset(Dataset):
                 coordsMap = transform(canvas)
 
 
-        return [img , labelsForImg, coordsMap]
+        return [img , "labels disabled", coordsMap]
         
