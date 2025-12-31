@@ -4,7 +4,8 @@ import os
 import cv2
 import torch.nn as nn
 import torch.nn.functional as F
-
+import time
+from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 
 class EAST(nn.Module):
     def __init__(self, color_channel=1):
@@ -35,7 +36,7 @@ class EAST(nn.Module):
 
         # Feature-merging branch
         self.Feature_merging_4 = nn.Sequential(
-            nn.Conv2d(512, 128, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(768, 128, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 128, kernel_size=1, stride=1, padding=0),
@@ -53,7 +54,7 @@ class EAST(nn.Module):
             nn.ReLU(inplace=True)
         )
         self.Feature_merging_2 = nn.Sequential(
-            nn.Conv2d(192, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(256, 32, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 32, kernel_size=1, stride=1, padding=0),
@@ -97,30 +98,68 @@ class EAST(nn.Module):
         f4 = self.Feature_extractor_4(f3)
         print("f4 shape: ", f4.shape)
 
-        # Feature-merging branch
-        h4 = self.Feature_merging_4(f4)
-        h4_up = F.interpolate(h4, scale_factor=2, mode='bilinear', align_corners=True)
-        print("h4 shape: ", h4.shape)
-        h4 = torch.cat((h4_up, f3), dim=1)
+        # the unpooling 
 
-        h3 = self.Feature_merging_3(h4)
-        h3_up = F.interpolate(h3, scale_factor=2, mode='bilinear', align_corners=True)
-        print("h3 shape: ", h3.shape)
-        h3 = torch.cat((h3_up, f2), dim=1)
+        #first input in to fmb
+        h1 = F.interpolate(f4, scale_factor=2, mode='bilinear', align_corners=True)
+        print("h1 shape unpooled: ", h1.shape)
+        print("f3 shape: ", f3.shape)
+        concat1 = torch.cat((h1, f3), dim=1)
+        print(concat1.shape)
+        h2 = self.Feature_merging_4(concat1)
 
-        h2 = self.Feature_merging_2(h3)
-        h2_up = F.interpolate(h2, scale_factor=2, mode='bilinear', align_corners=True)
-        print("h2 shape: ", h2.shape)
-        h2 = torch.cat((h2_up, f1), dim=1)
+        #second input in to fmb
+        print("h2 : ",h2.shape)
+        h2 = F.interpolate(h2, size=(f2.shape[2], f2.shape[3]), mode='bilinear', align_corners=True)
+        print("h2 shape unpooled: ", h2.shape)
+        print("f2 shape: ", f2.shape)
+        concat2 = torch.cat((h2, f2), dim=1)
+        print(concat2.shape)
+        h3 = self.Feature_merging_2(concat2)
 
-        x = self.Feature_extractor_end(h2)
+        #third input into fmb
+        h3 = F.interpolate(h3, size=(f1.shape[2], f1.shape[3]) , mode='bilinear', align_corners=True)
+        print("h3 shape unpooled: ", h3.shape)
+        print("f1 shape: ", f1.shape)
+        concat3 = torch.cat((h3, f1), dim=1)
+
+        x = self.Feature_extractor_end(concat3)
 
         # Output layers
-        score_map = self.output_start(x)
+        output_layer = self.output_start(x)
+        output_layer = F.interpolate(output_layer, size = (360, 640) , mode='bilinear', align_corners=True)
+        sig = nn.Sigmoid()
+        score_map = sig(output_layer)
         score_map = self.output_score_map(score_map)
+        score_map = sig(score_map)
         geo_map = self.output_score_quad_geometry(score_map)
-
-        print("score_map shape: ", score_map.shape)
-        print("geo_map shape: ", geo_map.shape)
+        
+        #print("score_map shape: ", score_map.shape)
+        #print("geo_map tesonr:", geo_map)
+        #print("geo_map shape: ", geo_map.shape)
 
         return score_map, geo_map
+    
+
+
+eee = torch.randn(360, 640)
+eee = eee.unsqueeze(0).unsqueeze(0)
+model = EAST(color_channel=1)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+eee = eee.to(device)
+model.train()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer.zero_grad()
+outputs = model(eee)
+
+score_map , geo_map = outputs
+
+print("score shape: ",score_map.shape)
+print(score_map)
+
+print("geo map :",geo_map.shape)
+print(geo_map)
+
+
+
