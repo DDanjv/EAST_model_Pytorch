@@ -82,11 +82,11 @@ def custom_collate(batch):
         pad_len = max_len - len(coords)
         padded_coords = coords.copy()
         for i in range(pad_len):
-            padded_coords.append([0,0,0,0,0,0,0,0])
-            
+            padded_coords.append(torch.tensor([0,0,0,0,0,0,0,0]))
+        torch.stack(padded_coords)    
         imgs_alt.append(imgs)
         labels_alt.append(labels)
         coords_alt.append(padded_coords)
     imgs_alt = torch.stack(imgs_alt)
-    #wcoords_tensor  = torch.stack(coords_alt)
+    coords_tensor  = torch.stack(coords_alt)
     return imgs_alt, labels_alt, coords_alt
