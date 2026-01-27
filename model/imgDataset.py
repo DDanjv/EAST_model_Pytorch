@@ -37,6 +37,7 @@ class imgDataset(Dataset):
                     labelAndcoord = line.split(',')
                     labelsForImg.append([i for i in labelAndcoord[8]])
                     coords = [int(float(f) / 2) for f in labelAndcoord[:8]]
+                    coords = torch.tensor(coords)
                     coordsForImg.append(coords)         
                 line = file.readline()
                 #building the img of coords to the be put into as tensor 
@@ -67,8 +68,9 @@ class imgDataset(Dataset):
             diff = max_size - len(coordsForImg[t][0])
             for i in range(0,diff):
                 coordsForImg[t].append(torch.tensor([]))'''
-        #coordsForImg = torch.stack(coordsForImg, dim=0)                      
-        return [img , "labels disabled", coordsForImg]
+        #coordsForImg = torch.stack(coordsForImg, dim=0)    
+        # label dis abled not needed for now                  
+        return [img , 0 , coordsForImg]
 
 def custom_collate(batch):
     max_len = max(len(item[2]) for item in batch)
@@ -81,12 +83,16 @@ def custom_collate(batch):
 
         pad_len = max_len - len(coords)
         padded_coords = coords.copy()
+
         for i in range(pad_len):
             padded_coords.append(torch.tensor([0,0,0,0,0,0,0,0]))
-        torch.stack(padded_coords)    
+        padded_coords = torch.stack(padded_coords, dim = 0)    
         imgs_alt.append(imgs)
         labels_alt.append(labels)
         coords_alt.append(padded_coords)
+        
     imgs_alt = torch.stack(imgs_alt)
     coords_tensor  = torch.stack(coords_alt)
+
+
     return imgs_alt, labels_alt, coords_alt
