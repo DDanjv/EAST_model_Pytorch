@@ -53,14 +53,54 @@ def loop_helper(model, dataset_loaded, device, optimizer, criterion , train = Tr
     #cycles through the photos and coords in each batch
     for imgs, _ , coords in dataset_loaded:
         imgs = imgs.to(device)
-        coords = coords.to(device)
+        trueMaps = []
+        for coordsOfOne in coords:
+            coordmap = torch.zeros(640,360)
+            for box in coordsOfOne:
+
+                # parsing coords 
+                topL = box[0:2]
+                topR = box[2:4]
+                botL = box[4:6]
+                botR = box[6:8]
+
+                #geting edges
+                topSlope = int((topL[1]-topR[1])/(topL[0]-topR[0]))
+                botSlope = int((botL[1]-botR[1])/(botL[0]-botR[0]))
+                leftSlope = int((botL[0]-topL[0])/(botL[1]-topL[1]))
+                rightSlope = int((botR[0]-topR[0])/(botR[1]-topR[1]))
+
+                #Find the bounding box
+                boundingX = [topL[0], topR[0], botL[0], botR[0]]
+                boundingY = [topL[1], topR[1], botL[1], botR[1]]
+                min_x, max_x = min(boundingX), max(boundingX)
+                min_y, max_y = min(boundingY), max(boundingY)
+
+                # Scan the area
+                for x in range(min_x, max_x + 1):
+                    for y in range(min_y, max_y + 1):
+                        if (topSlope > y and botSlope < y and leftSlope < x and rightSlope > x):
+                            coordmap[y][x] = 1
+
+            trueMaps.append(coordmap)
+        trueMaps = torch.stack(trueMaps)
+        trueMaps = trueMaps.to(device)
         #if training 
         if train:
             optimizer.zero_grad()
         #need to return loactions of coners
-        outputs = model(imgs)
+        score_map, geo_map  = model(imgs)
         #compare loactions from model to acc loacltions
-        score_loss, geo_loss = criterion(outputs, coords)
+        '''
+            cv2.fillPoly(gt_score_map, [shrunk_box.astype(np.int32)], 1)
+            loss = balanced_cross_entropy(predicted_score_map, gt_score_map) 
+        
+        '''
+        ## need to fix loss cal 
+        score_loss = criterion(score_map, coords)
+
+        ## need to fix loss cal 
+        geo_loss = criterion(geo_map, coords)
         #if train 
         if train:
             score_loss.backward()

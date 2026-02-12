@@ -92,7 +92,7 @@ def custom_collate(batch):
         coords_alt.append(padded_coords)
         
     imgs_alt = torch.stack(imgs_alt)
-    coords_tensor  = torch.stack(coords_alt)
+    coords_alt  = torch.stack(coords_alt)
 
 
     return imgs_alt, labels_alt, coords_alt
