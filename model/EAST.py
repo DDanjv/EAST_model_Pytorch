@@ -88,39 +88,39 @@ class EAST(nn.Module):
     def forward(self, x):
         # Feature extractor
         s = self.Feature_extractor_start(x)
-        print("s shape: ", s.shape)
+        #print("s shape: ", s.shape)
         f1 = self.Feature_extractor_1(s)
-        print("f1 shape: ", f1.shape)
+        #print("f1 shape: ", f1.shape)
         f2 = self.Feature_extractor_2(f1)
-        print("f2 shape: ", f2.shape)
+        #print("f2 shape: ", f2.shape)
         f3 = self.Feature_extractor_3(f2)
-        print("f3 shape: ", f3.shape)
+        #print("f3 shape: ", f3.shape)
         f4 = self.Feature_extractor_4(f3)
-        print("f4 shape: ", f4.shape)
+        #print("f4 shape: ", f4.shape)
 
         # the unpooling 
 
         #first input in to fmb
         h1 = F.interpolate(f4, scale_factor=2, mode='bilinear', align_corners=True)
-        print("h1 shape unpooled: ", h1.shape)
-        print("f3 shape: ", f3.shape)
+        #print("h1 shape unpooled: ", h1.shape)
+        #print("f3 shape: ", f3.shape)
         concat1 = torch.cat((h1, f3), dim=1)
-        print(concat1.shape)
+        #print(concat1.shape)
         h2 = self.Feature_merging_4(concat1)
 
         #second input in to fmb
-        print("h2 : ",h2.shape)
+        #print("h2 : ",h2.shape)
         h2 = F.interpolate(h2, size=(f2.shape[2], f2.shape[3]), mode='bilinear', align_corners=True)
-        print("h2 shape unpooled: ", h2.shape)
-        print("f2 shape: ", f2.shape)
+        #print("h2 shape unpooled: ", h2.shape)
+        #print("f2 shape: ", f2.shape)
         concat2 = torch.cat((h2, f2), dim=1)
-        print(concat2.shape)
+        #print(concat2.shape)
         h3 = self.Feature_merging_2(concat2)
 
         #third input into fmb
         h3 = F.interpolate(h3, size=(f1.shape[2], f1.shape[3]) , mode='bilinear', align_corners=True)
-        print("h3 shape unpooled: ", h3.shape)
-        print("f1 shape: ", f1.shape)
+        #print("h3 shape unpooled: ", h3.shape)
+        #print("f1 shape: ", f1.shape)
         concat3 = torch.cat((h3, f1), dim=1)
 
         x = self.Feature_extractor_end(concat3)

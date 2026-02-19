@@ -1,3 +1,4 @@
+import math
 import time
 import torch
 from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
@@ -55,62 +56,87 @@ def loop_helper(model, dataset_loaded, device, optimizer, criterion , train = Tr
         imgs = imgs.to(device)
         trueMaps = []
         for coordsOfOne in coords:
-            coordmap = torch.zeros(640,360)
+            coordmap = torch.zeros(360,640)
             for box in coordsOfOne:
-
-                # parsing coords 
-                topL = box[0:2]
-                topR = box[2:4]
-                botL = box[4:6]
-                botR = box[6:8]
-
-                #geting edges
-                topSlope = int((topL[1]-topR[1])/(topL[0]-topR[0]))
-                botSlope = int((botL[1]-botR[1])/(botL[0]-botR[0]))
-                leftSlope = int((botL[0]-topL[0])/(botL[1]-topL[1]))
-                rightSlope = int((botR[0]-topR[0])/(botR[1]-topR[1]))
-
-                #Find the bounding box
-                boundingX = [topL[0], topR[0], botL[0], botR[0]]
-                boundingY = [topL[1], topR[1], botL[1], botR[1]]
-                min_x, max_x = min(boundingX), max(boundingX)
-                min_y, max_y = min(boundingY), max(boundingY)
-
-                # Scan the area
+                # parsing coords
+                edges = [
+                    (box[0:2], box[2:4]), 
+                    (box[2:4], box[4:6]), 
+                    (box[4:6], box[6:8]), 
+                    (box[6:8], box[0:2])  
+                ]
+                #bounding box
+                min_x = min(box[0], box[2], box[4], box[6])
+                max_x = max(box[0], box[2], box[4], box[6])
+                min_y = min(box[1], box[3], box[5], box[7])
+                max_y = max(box[1], box[3], box[5], box[7])
+                #scan area
                 for x in range(min_x, max_x + 1):
                     for y in range(min_y, max_y + 1):
-                        if (topSlope > y and botSlope < y and leftSlope < x and rightSlope > x):
+                        cnt = 0
+                        for edge in edges:
+                            (x1,y1), (x2,y2) = edge
+                            if (y < y1) != (y < y2) and y2 != y1 and x < x1 + (y - y1) / (y2 - y1) * (x2 - x1):
+                                cnt += 1
+                        if cnt % 2 == 1:
                             coordmap[y][x] = 1
 
             trueMaps.append(coordmap)
+        #print(trueMaps)
         trueMaps = torch.stack(trueMaps)
         trueMaps = trueMaps.to(device)
         #if training 
         if train:
             optimizer.zero_grad()
-        #need to return loactions of coners
-        score_map, geo_map  = model(imgs)
+        p_score_map, p_geo_map  = model(imgs)
         #compare loactions from model to acc loacltions
-        '''
-            cv2.fillPoly(gt_score_map, [shrunk_box.astype(np.int32)], 1)
-            loss = balanced_cross_entropy(predicted_score_map, gt_score_map) 
-        
-        '''
-        ## need to fix loss cal 
-        score_loss = criterion(score_map, coords)
+        score_loss = balanced_cross_entropy_loss(p_score_map, trueMaps)
 
         ## need to fix loss cal 
-        geo_loss = criterion(geo_map, coords)
+        geo_loss = rbox_loss(p_geo_map, trueMaps)
+
+        total_loss = score_loss + geo_loss 
         #if train 
+
         if train:
-            score_loss.backward()
-            geo_loss.backward()
+            total_loss.backward()
             optimizer.step()
-        running_loss += score_loss.item()
-        _, predicted = torch.max(outputs.data, 1)
-        total += coords.size(0)
-        correct += (predicted == coords).sum().item()
+
+        # cal loss and accuracy
+        with torch.no_grad():
+            running_loss += total_loss.item()
+            predicted = (p_score_map > 0.5).float()
+            correct += (predicted == trueMaps).sum().item()
+            total += trueMaps.numel()
 
     avg_loss = running_loss / len(dataset_loaded)
     accuracy = 100 * correct / total
+    print(f"Time taken: {time.time() - start:.2f} seconds")
+    print(f"Avg Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%")
     return avg_loss, accuracy
+
+                        # y hat is preds and y* is targets
+def balanced_cross_entropy_loss(preds, targets, epsilon=1e-7):
+
+    #print("preds shape: ", preds.shape)
+    #print("targets shape: ", targets.shape)
+
+    beta = 1 - torch.mean(targets.float())
+    
+    preds = torch.clamp(preds, epsilon, 1.0 - epsilon)
+    
+    return ((-beta * targets * torch.log(preds)) - 
+            (1-beta)*(1-targets)*(torch.log(1-preds))).mean()
+
+def rbox_loss(preds, targets, epsilon=1e-7):
+    preds = torch.clamp(preds, epsilon, 1.0 - epsilon)
+    targets = targets.unsqueeze(1)
+    #print("preds shape: ", preds.shape)
+    #print("targets shape: ", targets.shape)
+
+    top = preds * targets
+    bottom = preds + targets
+    topAndBottom = torch.abs(top)/torch.abs(bottom)
+    fin = - torch.log(topAndBottom)
+
+    return fin.mean()
