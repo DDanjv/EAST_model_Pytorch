@@ -6,10 +6,12 @@ import torchvision.transforms as transforms
 import numpy as np
 
 class imgDataset(Dataset):
-    def __init__(self, path_imgs, path_labelAndcoords):
+    def __init__(self, path_imgs, path_labelAndcoords,img_width = 640, img_height = 360):
         super().__init__()
         self.path_imgs = path_imgs
         self.path_labelAndCoords = path_labelAndcoords
+        self.img_width = img_width
+        self.img_height = img_height
 
     def __len__(self):
         return len(self.path_imgs)
@@ -19,7 +21,7 @@ class imgDataset(Dataset):
         path_img = self.path_imgs[index]
         img = cv2.imread(path_img)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.resize(img, (640, 360))
+        img = cv2.resize(img, (self.img_width, self.img_height))
         transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.ToTensor(),

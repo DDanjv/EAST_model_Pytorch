@@ -8,67 +8,74 @@ import time
 from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 
 class EAST(nn.Module):
-    def __init__(self, color_channel=1):
+    def __init__(self, color_channel=1, scale_factor = 1, img_width = 640, img_height = 360):
         super(EAST, self).__init__()
         self.color_channel = color_channel
+        self.scale_factor = scale_factor
+        self.img_width = img_width
+        self.img_height = img_height
 
         # Feature extractor
         self.Feature_extractor_start = nn.Sequential(
-            nn.Conv2d(color_channel, 16, kernel_size=7, stride=1, padding=3),
+            nn.Conv2d(color_channel, int(scale_factor ** 2), kernel_size=7, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
         self.Feature_extractor_1 = nn.Sequential(
-            nn.Conv2d(16, 64, kernel_size=7, stride=1, padding=3),
+            nn.Conv2d((int(scale_factor ** 2)), int(scale_factor ** 3), kernel_size=7, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
         self.Feature_extractor_2 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=7, stride=1, padding=3),
+            nn.Conv2d((int(scale_factor ** 3)), int(scale_factor ** 3.5), kernel_size=7, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
         self.Feature_extractor_3 = nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=7, stride=1, padding=3),
+            nn.Conv2d((int(scale_factor ** 3.5)), int(scale_factor ** 4), kernel_size=7, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
         self.Feature_extractor_4 = nn.Sequential(
-            nn.Conv2d(256, 512, kernel_size=7, stride=1, padding=3),
+            nn.Conv2d((int(scale_factor ** 4)), int(scale_factor ** 4.5), kernel_size=7, stride=1, padding=3),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
         # Feature-merging branch
         self.Feature_merging_4 = nn.Sequential(
-            nn.Conv2d(768, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(((int(scale_factor ** 4.5)) + (int(scale_factor ** 4))), int(scale_factor ** 3.5), kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(int(scale_factor ** 3.5)),
             nn.ReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=1, stride=1, padding=0),
-            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d((int(scale_factor ** 3.5)), int(scale_factor ** 3.5), kernel_size=1, stride=1, padding=0),
+            nn.Conv2d((int(scale_factor ** 3.5)), int(scale_factor ** 3.5), kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(int(scale_factor ** 3.5)),
             nn.ReLU(inplace=True)
         )
         self.Feature_merging_3 = nn.Sequential(
-            nn.Conv2d(384, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(((int(scale_factor ** 4)) + (int(scale_factor ** 3.5))), int(scale_factor ** 3), kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(int(scale_factor ** 3)),
             nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=1, stride=1, padding=0),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
+            nn.Conv2d((int(scale_factor ** 3)), int(scale_factor ** 3), kernel_size=1, stride=1, padding=0),
+            nn.Conv2d((int(scale_factor ** 3)), int(scale_factor ** 3), kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(int(scale_factor ** 3)),
             nn.ReLU(inplace=True)
         )
         self.Feature_merging_2 = nn.Sequential(
-            nn.Conv2d(256, 32, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(
+                (int(scale_factor ** 3.5) + int(scale_factor ** 3.5)),  # was: int(scale_factor ** 3) only
+                int(scale_factor ** 2.5),
+                kernel_size=3, stride=1, padding=1
+            ),
+            nn.BatchNorm2d(int(scale_factor ** 2.5)),
             nn.ReLU(inplace=True),
-            nn.Conv2d(32, 32, kernel_size=1, stride=1, padding=0),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(int(scale_factor ** 2.5), int(scale_factor ** 2.5), kernel_size=1, stride=1, padding=0),
+            nn.Conv2d(int(scale_factor ** 2.5), int(scale_factor ** 2.5), kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(int(scale_factor ** 2.5)),
             nn.ReLU(inplace=True)
         )
         self.Feature_extractor_end = nn.Sequential(
-            nn.Conv2d(96, 32, kernel_size=3, stride=1, padding=1)
+            nn.Conv2d((int(scale_factor ** 2.5) + int(scale_factor ** 3)), int(scale_factor ** 2.5), kernel_size=3, stride=1, padding=1)
         )
 
         # Output layers
         self.output_start = nn.Sequential(
-            nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+            nn.Conv2d((int(scale_factor ** 2.5)), 1, kernel_size=1, stride=1, padding=0)
         )
         self.output_score_map = nn.Sequential(
             nn.Conv2d(1, 4, kernel_size=1, stride=1, padding=0),
@@ -114,8 +121,9 @@ class EAST(nn.Module):
         #print("h2 shape unpooled: ", h2.shape)
         #print("f2 shape: ", f2.shape)
         concat2 = torch.cat((h2, f2), dim=1)
-        #print(concat2.shape)
+        #print("vvv",concat2.shape)
         h3 = self.Feature_merging_2(concat2)
+        #print("h3 : ",h3.shape)
 
         #third input into fmb
         h3 = F.interpolate(h3, size=(f1.shape[2], f1.shape[3]) , mode='bilinear', align_corners=True)
@@ -127,7 +135,7 @@ class EAST(nn.Module):
 
         # Output layers
         output_layer = self.output_start(x)
-        output_layer = F.interpolate(output_layer, size = (360, 640) , mode='bilinear', align_corners=True)
+        output_layer = F.interpolate(output_layer, size = (self.img_height, self.img_width) , mode='bilinear', align_corners=True)
         sig = nn.Sigmoid()
         score_map = sig(output_layer)
         score_map = self.output_score_map(score_map)
@@ -137,11 +145,11 @@ class EAST(nn.Module):
         #print("score_map shape: ", score_map.shape)
         #print("geo_map tesonr:", geo_map)
         #print("geo_map shape: ", geo_map.shape)
-
+        print("forward pass completed")
         return score_map, geo_map
     
 
-
+'''w
 eee = torch.randn(360, 640)
 eee = eee.unsqueeze(0).unsqueeze(0)
 model = EAST(color_channel=1)
@@ -160,6 +168,6 @@ print(score_map)
 
 print("geo map :",geo_map.shape)
 print(geo_map)
-
+'''
 
 

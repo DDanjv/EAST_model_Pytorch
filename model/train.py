@@ -3,7 +3,7 @@ import time
 import torch
 from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 
-def train_model(model, loader_train, loader_val, criterion, optimizer, cycles):
+def train_model(model, loader_train, loader_val, criterion, optimizer, cycles, width = 640, height = 360):
 
     #setting up model and decive
     model.train()
@@ -22,13 +22,13 @@ def train_model(model, loader_train, loader_val, criterion, optimizer, cycles):
                                             device = device, 
                                             optimizer = optimizer, 
                                             criterion = criterion, 
-                                            train = True)
+                                            train = True, width = width, height = height)
         val_loss, val_acc = loop_helper(model,
                                             dataset_loaded = loader_train, 
                                             device = device, 
                                             optimizer = optimizer, 
                                             criterion = criterion, 
-                                            train = True)
+                                            train = True, width = width, height = height)
         print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%")
         print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%")
         if val_acc > best_val_acc:
@@ -37,7 +37,7 @@ def train_model(model, loader_train, loader_val, criterion, optimizer, cycles):
             torch.save(model.state_dict(), best_model_path)
         
     return best_model_path
-def loop_helper(model, dataset_loaded, device, optimizer, criterion , train = True):
+def loop_helper(model, dataset_loaded, device, optimizer, criterion , train = True, width = 640, height = 360):
 
     #for training or eval
     if train:
@@ -56,7 +56,7 @@ def loop_helper(model, dataset_loaded, device, optimizer, criterion , train = Tr
         imgs = imgs.to(device)
         trueMaps = []
         for coordsOfOne in coords:
-            coordmap = torch.zeros(360,640)
+            coordmap = torch.zeros(height, width)
             for box in coordsOfOne:
                 # parsing coords
                 edges = [
