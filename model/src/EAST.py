@@ -9,7 +9,7 @@ from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 
 class EAST(nn.Module):
     
-    def __init__(self, color_channel=1, scale_factor=2, img_width=640, img_height=360):
+    def __init__(self, color_channel=1, scale_factor=4):
         super(EAST, self).__init__()
         
         # Define channels explicitly to avoid int(float) truncation bugs
@@ -129,6 +129,7 @@ class EAST(nn.Module):
         score_map = self.output_score_map(x_out)
         if(check): print("score map shape before sigmoid: ", score_map.shape)
         score_map = torch.sigmoid(score_map)
+        score_map = (score_map >= 0.5).float()
         if(check): print("score map shape after sigmoid: ", score_map.shape)
 
         geo_map = self.output_score_quad_geometry(x_out)
