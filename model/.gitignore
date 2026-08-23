@@ -19,3 +19,5 @@ dataset/
 
 # Ignore logs
 *.log
+
+test.ipynb
