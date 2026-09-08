@@ -23,3 +23,6 @@ dataset/
 test.ipynb
 
 models/
+
+east_model.pth
+east_model_last.pth
